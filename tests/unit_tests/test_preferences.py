@@ -147,3 +147,18 @@ def test_rtc_rejected_on_unsupported_platform() -> None:
 def test_flash_allowed_on_unsupported_platform() -> None:
     _set_platform(PLATFORM_RP2040)
     assert _validate({CONF_STORAGE: "flash"})[CONF_STORAGE] == preferences.STORAGE_FLASH
+
+
+@pytest.mark.parametrize("platform", [PLATFORM_ESP8266, PLATFORM_RP2040])
+def test_without_platform_default_storage_stays_unset(platform: str) -> None:
+    # Leaves the choice to the component's existing behavior (e.g. ESP8266 restore_from_flash).
+    _set_platform(platform)
+    schema = cv.Schema(preferences.storage_schema(platform_default=False))
+    assert CONF_STORAGE not in schema({})
+
+
+def test_without_platform_default_rtc_still_rejected_on_unsupported_platform() -> None:
+    _set_platform(PLATFORM_RP2040)
+    schema = cv.Schema(preferences.storage_schema(platform_default=False))
+    with pytest.raises(cv.Invalid, match="not supported on this platform"):
+        schema({CONF_STORAGE: "rtc"})

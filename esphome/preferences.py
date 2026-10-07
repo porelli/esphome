@@ -54,8 +54,15 @@ def _validate_storage(value):
     return value
 
 
-def storage_schema():
-    """Return an Optional(CONF_STORAGE) entry for merging into a component schema."""
+def storage_schema(*, platform_default: bool = True):
+    """Return an Optional(CONF_STORAGE) entry for merging into a component schema.
+
+    Pass ``platform_default=False`` when leaving the option unset must keep the
+    component's existing behavior, for example where ESP8266's ``restore_from_flash``
+    already decides the storage.
+    """
+    if not platform_default:
+        return {cv.Optional(CONF_STORAGE): _validate_storage}
     return {cv.Optional(CONF_STORAGE, default=_default_storage): _validate_storage}
 
 
