@@ -3,8 +3,8 @@
 Preferences can be stored either in flash (durable across power loss) or in RTC
 memory (fast, survives deep sleep and soft resets but not power loss). The
 flash-vs-RTC choice is only meaningful on platforms whose preferences backend
-honors the ``in_flash`` flag — currently ESP32 and ESP8266. On other platforms
-the value is accepted only as ``flash`` (the sole supported backend).
+honors the ``in_flash`` flag — currently ESP32, ESP8266 and the BK7231T. On other
+platforms the value is accepted only as ``flash`` (the sole supported backend).
 
 Components include :func:`storage_schema` in their config and convert the chosen
 value with :func:`is_in_flash` when calling ``make_preference``.
@@ -32,7 +32,21 @@ def _rtc_supported() -> bool:
         from esphome.components.esp32.const import VARIANT_ESP32C2, VARIANT_ESP32C61
 
         return get_esp32_variant() not in (VARIANT_ESP32C2, VARIANT_ESP32C61)
-    return False
+    return _is_bk7231t()
+
+
+def _is_bk7231t() -> bool:
+    """The BK7231T keeps spare JPEG quantization-table words across soft resets, which the
+    libretiny backend uses as RTC storage. Other LibreTiny families have no such storage."""
+    if not CORE.is_bk72xx:
+        return False
+    from esphome.components.libretiny.const import (
+        FAMILY_BK7231T,
+        KEY_FAMILY,
+        KEY_LIBRETINY,
+    )
+
+    return CORE.data.get(KEY_LIBRETINY, {}).get(KEY_FAMILY) == FAMILY_BK7231T
 
 
 def _default_storage() -> str:
@@ -76,6 +90,8 @@ def request_rtc_storage() -> None:
     """
     if CORE.is_esp32:
         cg.add_define("USE_ESP32_RTC_PREFERENCES")
+    elif _is_bk7231t():
+        cg.add_define("USE_LIBRETINY_RTC_PREFERENCES")
 
 
 def validate_rtc_storage(value):
